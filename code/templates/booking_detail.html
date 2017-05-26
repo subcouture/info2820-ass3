@@ -1,0 +1,46 @@
+{% include 'top.html' %}
+<div class="content">
+    <div class="container details">
+        <h1 class="title">Booking for <strong>{{user.title}}. {{ user.family_name}}</strong></h1>
+
+        <table>
+            <tr>
+                <td>Member Name</td>
+                <td>{{ user.first_name }} {{user.family_name }}</td>
+            </tr>
+            <tr>
+                <td>Vehicle Code</td>
+                <td>{{booking.vehicle}}</td>
+            </tr>
+            <tr>
+                <td>Start Information</td>
+                <td>{{ booking.start_day }} @ {{booking.start_time}}</td>
+            </tr>
+            <tr>
+                <td>Date</td>
+                <td>{{ booking.start_day }}</td>
+            </tr>
+            <tr>
+                <td>Time</td>
+                <td>{{ booking.start_time }}</td>
+            </tr>
+            <tr>
+                <td>To</td>
+                <td>{{ booking.to }}</td>
+            </tr>
+            <tr>
+                <td>From</td>
+                <td>{{ booking.from }}</td>
+            </tr>
+            <tr>
+                <td>Booked By</td>
+                <td>{{booking.booked_by}}</td>
+            </tr>
+            <tr>
+                <td>Booked On</td>
+                <td>{{ booking.whenbooked }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% include 'bottom.html' %}

@@ -1,0 +1,43 @@
+{% include 'top.html' %}
+<div class="content">
+    <div class="container details">
+        <h1 class="title">MemberID: {{ user.member_id }}</h1>
+        <h2>Information</h2>
+        <table>
+            <tr>
+                <td>Member ID</td>
+                <td> {{user.member_id }} </td>
+            </tr>
+            <tr>
+                <td>Name</td>
+                <td>{{user.title}} {{user.first_name}} {{user.family_name}}</td>
+            </tr>
+            <tr>
+                <td>Type</td>
+                <td>{{user.member_type }}</td>
+            </tr>
+            <tr>
+                <td> Accommodation</td>
+                <td> {{extra.accommodation.name}}</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td> {{extra.accommodation.address}}</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>  {{extra.accommodation.gps_lat}} , {{extra.accommodation.gps_lon}}</td>
+            </tr>
+        </table>
+        <h2>Extra Information</h2>
+        <table>
+            {% for item in extra.member_details %}
+                <tr>
+                    <td>{{item}}</td>
+                    <td>{{extra.member_details[item]}}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% include 'bottom.html' %}

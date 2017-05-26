@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Olympics Database</title>
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/pure.css') }}">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/grid.css') }}">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}">
+        <script src="{{ url_for('static', filename='scripts/jquery.js') }}"></script>
+    </head>
+    <body>
+        <div class="body-container">
+            <header class="page-header">
+                <div class="container">
+                    <div class="title">
+                        <a href="/"><span class="inner"></span></a>
+                    </div>
+                    <ul class="page-nav">
+                        {% if session.logged_in %}
+                        <li><a href="{{ url_for('member_details')}}">My Details</a></li>
+                        <li><a href="{{ url_for('list_events')}}">Events</a></li>
+                        {% if session.member_type == 'staff' %}
+                        <li><a href="{{ url_for('new_booking')}}">Make Booking</a></li>
+                        {% endif %}
+                        <li><a href="{{ url_for('user_bookings')}}">My Bookings</a></li>
+                        <li><a href="{{ url_for('journeys')}}">Journeys</a></li>
+                        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </header>
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% if page.bar == True %}
+                <ul class="flashes" style="background-color: #0B0">
+                {% else %}
+                <ul class="flashes" style="background-color: #B00">
+                {% endif %}
+                {% for message in messages %}
+                  <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}

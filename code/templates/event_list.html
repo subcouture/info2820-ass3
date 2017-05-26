@@ -1,0 +1,36 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title">Events</h1>
+        <div class="search">
+            <form class="search-top" method="POST" action="{{url_for('list_events')}}">
+                <input type="text" name="search" placeholder="Search Sport" autofocus required>
+                <button class="flat" type="submit">Submit</button>
+                <div class="clear"></div>
+            </form>
+        </div>
+        <table class="styled">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Start</th>
+                    <th>Sport</th>
+                    <th>Venue</th>
+                </tr>
+            </thead>
+            <tbody>
+                    {% for e in events %}
+                    <tr class="clickable-tr" data-href="{{url_for('event_details', eventname=e.name)}}">
+                        <td><a href="{{url_for('event_details', eventname=e.name)}}">{{ e.name }}</a></td>
+                        <td>{{ e.start }}</td>
+                        <td>{{ e.sport }}</td>
+                        <td>{{ e.venue }}</td>
+                    </tr>
+                    {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'bottom.html' %}

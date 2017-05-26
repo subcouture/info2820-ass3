@@ -1,0 +1,41 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title">New Booking</h1>
+
+        <form class="newbooking pure-form pure-form-aligned" method="POST" action="{{url_for('new_booking')}}">
+            <div class="pure-control-group">
+                <label for="member_id">Member ID:</label>
+                <input type="text" name="member_id" placeholder="Member ID" autofocus required>
+            </div>
+            <div class="pure-control-group">
+                <label for="from_place">From:</label>
+                <input type="text" name="from_place" placeholder="Origin" autofocus required>
+            </div>
+            <div class="pure-control-group">
+                <label for="to_place">To:</label>
+               <input type="text" name="to_place" placeholder="Destination" required>
+            </div>
+            <div class="pure-control-group">
+            <label for="vehicle_regno"> Vehicle: </label>
+                <input type="text" name="vehicle_regno" placeholder="Vehicle Registration" required>
+            </div>
+            <div class="pure-control-group">
+                <label for="book_date"> Date: </label>
+                <input type="date" name="book_date" placeholder="YYYY-MM-DD" required>
+            </div>
+            <div class="pure-control-group">
+                <label for="book_hour"> Start Hour: </label>
+                <select name="book_hour" placeholder="Time" required>
+                    {% for hour in times %}
+                        <option value="{{hour}}">{{hour}}:00</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="flat">Create Booking</button>
+        </form>
+    </div>
+</div>
+
+{% include 'bottom.html' %}

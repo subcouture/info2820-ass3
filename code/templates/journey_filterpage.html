@@ -1,0 +1,26 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title">Journeys</h1>
+
+        <form class="newbooking pure-form pure-form-aligned" method="POST" action="{{url_for('journeys')}}">
+            <div class="pure-control-group">
+                <label for="from_place">From:*</label>
+                <input type="text" name="from_place" placeholder="Origin" autofocus required>
+            </div>
+            <div class="pure-control-group">
+                <label for="to_place">To:*</label>
+               <input type="text" name="to_place" placeholder="Destination" required>
+            </div>
+            <div class="pure-control-group">
+                <label for="filter_date"> Date: </label>
+                <input type="date" name="filter_date" placeholder="YYYY-MM-DD">
+            </div>
+            <button type="submit" class="flat">Select Journeys</button>
+        </form>
+        <small>* = required</small>
+    </div>
+</div>
+
+{% include 'bottom.html' %}

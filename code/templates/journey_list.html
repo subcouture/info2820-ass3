@@ -1,0 +1,44 @@
+{% include 'top.html' %}
+<div class="content">
+    <div class="container">
+        <h1 class="title">Journeys <small>({{formdata.from}} - {{formdata.to}})</small></h1>
+        <div class="search">
+            <form class="search-top" method="POST" action="{{url_for('journeys')}}">
+                <input type="date" name="filter_date" placeholder="Journey Date" autofocus required>
+                <input type="hidden" value="{{formdata.from}}" name="from_place">
+                <input type="hidden" value="{{formdata.to}}" name="to_place">
+                <button class="flat" type="submit">Submit</button>
+                <div class="clear"></div>
+            </form>
+        </div>
+        <table class="styled" id="booking_list_table">
+        <thead>
+            <tr>
+                <th>Start Date</th>
+                <th>Start Time</th>
+                <th>To</th>
+                <th>From</th>
+                <th>Vehicle</th>
+                <th></th>
+            </tr>
+        </thead>
+        {% if journeys %}
+        <tbody>
+            {% for item in journeys %}
+            <tr>
+                <td>{{ item.start_day}}</td>
+                <td>{{ item.start_time }}</td>
+                <td>{{ item.to }}</td>
+                <td>{{ item.from }}</td>
+                <td>{{ item.vehicle}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+        {% else %}
+        </table>
+        <h1 class="t-cent">You haven't made any bookings</h1>
+        {% endif %}
+    </div>
+</div>
+{% include 'bottom.html' %}

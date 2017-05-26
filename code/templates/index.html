@@ -1,0 +1,30 @@
+{% include 'top.html' %}
+<div class="content">
+    <div class="container details">
+        <h1 class="title"> Welcome, {{ user.first_name }}</h1>
+        <table>
+            <tr>
+                <td> Name </td>
+                <td> {{ user.title }}, {{ user.first_name }} {{ user.family_name }}</td>
+            </tr>
+            <tr>
+                <td> Member ID</td>
+                <td> {{ user.member_id }}</td>
+            </tr>
+            <tr>
+            <tr>
+                <td>Member Type </td>
+                <td> {{user.member_type }} </td>
+            </tr>
+            <tr>
+                <td>Country </td>
+                <td> {{user.country_name}} </td>
+            </tr>
+            <tr>
+                <td> Residence </td>
+                <td>{{ user.residence}}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% include 'bottom.html'%}

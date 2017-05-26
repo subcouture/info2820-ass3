@@ -1,0 +1,43 @@
+{% include 'top.html' %}
+<div class="content">
+    <div class="container">
+        <h1 class="title">My Bookings</h1>
+        <div class="search">
+            <form class="search-top" method="GET" action="{{url_for('user_bookings')}}">
+                <input type="date" name="dayfilter" placeholder="Search Sport" autofocus required>
+                <button class="flat" type="submit">Submit</button>
+                <div class="clear"></div>
+            </form>
+        </div>
+        <table class="styled" id="booking_list_table">
+        <thead>
+            <tr>
+                <th>Start Date</th>
+                <th>Start Time</th>
+                <th>To</th>
+                <th>From</th>
+                <th>Vehicle</th>
+                <th></th>
+            </tr>
+        </thead>
+        {% if bookings %}
+        <tbody>
+            {% for item in bookings %}
+            <tr class="clickable-tr" data-href="{{url_for('booking_detail', to=item.to, from=item.from, vehicle=item.vehicle, startdate=item.start_day, starttime=item.start_time)}}">
+                <td>{{ item.start_day}}</td>
+                <td>{{ item.start_time }}</td>
+                <td>{{ item.to }}</td>
+                <td>{{ item.from }}</td>
+                <td>{{ item.vehicle}}</td>
+                <td><a class="booking-detail-button" href="{{url_for('booking_detail', to=item.to, from=item.from, vehicle=item.vehicle, startdate=item.start_day, starttime=item.start_time)}}">View Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+        {% else %}
+        </table>
+        <h1 class="t-cent">You haven't made any bookings</h1>
+        {% endif %}
+    </div>
+</div>
+{% include 'bottom.html' %}

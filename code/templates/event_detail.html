@@ -1,0 +1,58 @@
+{% include 'top.html' %}
+<div class="content">
+    <div class="container details">
+        <h1 class="title">{{ event.name }}</h1>
+        <h2>Information</h2>
+        <table>
+            <tr>
+                <td>Event Name</td>
+                <td> {{event.name}} </td>
+            </tr>
+            <tr>
+                <td>Sport</td>
+                <td>{{event.sport}}</td>
+            </tr>
+            <tr>
+                <td> Start Time </td>
+                <td> {{event.start}}</td>
+            </tr>
+            <tr>
+                <td> Venue</td>
+                <td> {{event.venue}}</td>
+            </tr>
+        </table>
+    </div>
+    <div class="container">
+
+        <h2>Results</h2>
+        <table class="styled">
+            <tr>
+                <th>MemberID</th>
+                <th>Result</th>
+                <th>Medal</th>
+            </tr>
+            {% for row in results %}
+            <tr>
+                <td>{{row.member_id}}</td>
+                <td>{{row.result}}</td>
+                <td>{{row.medal}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h2>Officials</h2>
+        <table class="styled">
+            <tr>
+                <th>MemberID</th>
+                <th>Role</th>
+            </tr>
+            {% for row in officials %}
+            <tr>
+                <td>{{row.member_id}}</td>
+                <td>{{row.role}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% include 'bottom.html' %}
