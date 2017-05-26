@@ -1,3 +1,33 @@
+'''
+
+syntax for database connections
+
+conn = database_connect()
+if(conn is None):
+    return None
+# Sets up the rows as a dictionary
+cur = conn.cursor()
+val = None
+try:
+    # Try getting all the information returned from the query
+    # NOTE: column ordering is IMPORTANT
+    cur.execute("""SELECT *
+                    FROM event""")
+    val = cur.fetchall()
+except:
+    # If there were any errors, we print something nice and return a NULL value
+    print("Error fetching from database")
+
+cur.close()                     # Close the cursor
+conn.close()                    # Close the connection to the db
+return val
+
+
+
+'''
+
+
+
 #!/usr/bin/env python3
 
 from modules import pg8000
@@ -510,4 +540,3 @@ def to_json(fn_name, ret_val):
 
 # =================================================================
 # =================================================================
-
