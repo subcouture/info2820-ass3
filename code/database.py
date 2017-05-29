@@ -76,15 +76,79 @@ Check that the users information exists in the database.
 '''
 def check_login(member_id, password):
 
-    # TODO
     # Check if the user details are correct!
     # Return the relevant information (watch the order!)
 
-    # TODO Dummy data - change rows to be useful!
+    # member_id and password should be found in the table 'Member'
+    # test account: A000030488 password
+
+    # 1. create connection with DB, get cursor
+    connection = database_connect();
+    if (connection is None):
+        return None;
+    cur = connection.cursor(); #get cursor
+
+    # 2. execute the SQL from DB
+    try:
+        # select member
+        sql = """SELECT *
+                 FROM public.member
+                 WHERE member_id=%s AND pass_word=%s"""
+        cur.execute(sql,(member_id,password))
+        member = cur.fetchone()
+        if (member is None):
+            emptyList = {}  #return an empty list if incorrect name/password
+            return emptyList 
+        
+        #select country name
+        sql = """SELECT country_name
+                 FROM public.Country
+                 WHERE country_code=%s"""
+        cur.execute(sql,[member[4]])
+        country_name = cur.fetchone()
+        
+        #select residence
+        sql = """SELECT place_name
+                 FROM   public.place 
+                 WHERE place_id=%s"""
+        cur.execute(sql,[member[5]])
+        residence = cur.fetchone()
+        
+        #check member type
+        sql = """SELECT *
+                 FROM public.Athlete
+                 WHERE member_id=%s"""
+
+        cur.execute(sql,(member_id,))
+        if(cur.rowcount == 0): #if user is not athlete
+            sql = """SELECT *
+                     FROM public.Official
+                     WHERE member_id=%s"""
+            cur.execute(sql,(member_id,))
+            if(cur.rowcount != 0): #if user is not official
+                member_type = cur.fetchone()
+            else:
+                member_type = ["Staff"]
+        else:
+            member_type = cur.fetchone()
+
+        cur.close()
+        connection.close()
+    except:
+        #when reciving error
+        print("Error When Login")
+        cur.close();
+        connection.close()
+        return None
+
+    # Dummy data - change rows to be useful!
     # FORMAT = [member_id, title, firstname, familyname, countryName, residence]
-    user_data = ['1141171337', 'Mr', 'Potato', 'Head', 'Australia', 'SIT']
+    # e.g. user_data = ['1141171337', 'Mr', 'Potato', 'Head', 'Australia', 'SIT']
+
+    user_data = [member[0],member[1],member[3],member[2],country_name[0],residence[0]]
     # Get the member's type
-    user_type = ['athlete']
+    # e.g. user_type = ['athlete']
+    user_type = [member_type[0]]
 
     tuples = {
             'member_id': user_data[0],
