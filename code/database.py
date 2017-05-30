@@ -125,12 +125,12 @@ def check_login(member_id, password):
                      FROM public.Official
                      WHERE member_id=%s"""
             cur.execute(sql,(member_id,))
-            if(cur.rowcount != 0): #if user is not official
-                member_type = cur.fetchone()
+            if(cur.rowcount != 0): #if user is official
+                member_type = ["official"]
             else:
                 member_type = ["Staff"]
         else:
-            member_type = cur.fetchone()
+            member_type = ["Athlete"]
 
         cur.close()
         connection.close()
@@ -177,21 +177,68 @@ Get the details for a member, including:
 If they are an official, then they will have no medals, just a list of their roles.
 '''
 def member_details(member_id, mem_type):
-
+    
+    '''
     # TODO
     # Return all of the user details including subclass-specific details
     #   e.g. events participated, results.
 
-    # TODO - Dummy Data (Try to keep the same format)
+    no need of doing this?
+    '''
+
+    # Dummy Data (Try to keep the same format)
     # Accommodation [name, address, gps_lat, gps_long]
-    accom_rows = ['SIT', '123 Some Street, Boulevard', '-33.887946', '151.192958']
+    # e.g. accom_rows = ['SIT', '123 Some Street, Boulevard', '-33.887946', '151.192958']
+
+    # 1. create connection with DB, get cursor
+    connection = database_connect()
+    if (connection is None):
+        return None;
+    cur = connection.cursor() #get cursor
+
+    # 2. execute the SQL from DB
+    try:
+
+        sql = """SELECT *
+                 FROM public.member
+                 WHERE member_id=%s"""
+        cur.execute(sql,(member_id,))
+        member = cur.fetchone()
+
+        sql = """SELECT *
+                 FROM public.Place
+                 WHERE place_id=%s""" 
+        cur.execute(sql,[member[5]])
+        place_info = cur.fetchone()
+
+        accom_rows = [place_info[1],place_info[4],place_info[3],place_info[2]] 
+
+    except:
+        print("Error When Searching Accom Info")
+        connection.close()
+        cur.close()
+        return None
 
     # Check what type of member we are
     if(mem_type == 'athlete'):
-        # TODO get the details for athletes
+        # get the details for athletes
         # Member details [total events, total gold, total silver, total bronze, number of bookings]
-        member_information_db = [5, 2, 1, 2, 20]
-
+        try: 
+            sql = """(SELECT COUNT(*) FROM Participates WHERE athlete_id = %s) AS total_event
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'gold') AS gold,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'silver') AS silver,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'bronze') AS bronze,
+                     (SELECT COUNT(*) FROM Booking WHERE booked_for = %s) as bookings
+                      FROM Participates, Booking """
+            cur.execute(sql,(member_id,))
+            details = cur.fetchone()
+        except:
+            print("Error When Searching Athlete Info")
+            connection.close()
+            cur.close()
+            return None
+        
+        member_information_db = [details[0],details[1],details[2],details[3],details[4]]
         member_information = {
             'total_events': member_information_db[0],
             'gold': member_information_db[1],
@@ -200,16 +247,18 @@ def member_details(member_id, mem_type):
             'bookings': member_information_db[4]
         }
     elif(mem_type == 'official'):
-
-        # TODO get the relevant information for an official
+        
+        # waiting for more example data
+        #  TODO get the relevant information for an official
         # Official = [ Role with greatest count, total event count, number of bookings]
+
+        sql = """(SELECT """ 
         member_information_db = ['Judge', 10, 20]
 
         member_information = {
             'favourite_role' : member_information_db[0],
             'total_events' : member_information_db[1],
-            'bookings': member_information_db[2]
-        }
+            'bookings': member_information_db[2]}
     else:
 
         # TODO get information for staff member
@@ -250,6 +299,29 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
     # return False if booking was unsuccessful :)
     # We want to make sure we check this thoroughly
     # MUST BE A TRANSACTION ;)
+
+    connection = database_connect();
+    if (connection is None):
+        return False
+    cur = connection.cursor(); #get cursor
+
+    try:
+        #check if member is a Staff
+        sql = "SELECT * FROM public.Staff WHERE member_id=%s"
+        cur.execute(sql,(my_member_id,))
+        if (cur.rowcount == 0):
+            return False
+        
+        #get vehicle capacity
+        sql = "SELECT capacity FROM public.Vehicle WHERE vehicle_code=%s"
+        cur.execute(sql,(vehicle,))
+        if (cur.rowcount == 0): #vehicle does not exits
+            return False
+        capacity = cur.fetchone()
+        
+        #ger num_booking on this vehicle
+    except:
+        return False
     return True
 
 '''
@@ -352,14 +424,49 @@ def all_journeys(from_place, to_place):
     # Should be chronologically ordered
     # It is a list of lists
 
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+    
+    try:
+        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
+        cur.execute(sql,(from_place,))
+        from_placeID = cur.fetchone()
+
+        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
+        cur.execute(sql,(to_place,))
+        to_placeID = cur.fetchone()
+
+        sql = """SELECT vehicle_code,
+	TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day, 
+	TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time, 
+	(SELECT place_name FROM public.Place WHERE place_id = %s) as to,
+
+	(SELECT place_name FROM public.Place WHERE place_id = %s) as from,
+	nbooked,capacity
+                 FROM public.Journey JOIN public.Vehicle USING(vehicle_code),public.Place
+                 WHERE from_place=%s and to_place=%s
+                 ORDER BY day, time"""
+        cur.execute(sql,[to_placeID[0],from_placeID[0],from_placeID[0],to_placeID[0]])
+        lists = cur.fetchall()
+        cur.close()
+        connection.close()
+    except:
+        cur.close()
+        connection.close()
+        print("Error when Searching for all journeys")
+        return None
+    
     # Format:
     # [
     #   [ vehicle, day, time, to, from, nbooked, vehicle_capacity],
     #   ...
     # ]
-    journeys_db = [
-        ['TR470R', '21/12/2020', '0600', 'SIT', 'Wentworth', 7, 8]
-    ]
+    #journeys_db = [
+    #['TR470R', '21/12/2020', '0600', 'SIT', 'Wentworth', 7, 8]
+    #]
+    journeys_db = lists
 
     journeys = [{
         'vehicle': row[0],
@@ -367,6 +474,8 @@ def all_journeys(from_place, to_place):
         'start_time': row[2],
         'to' : row[3],
         'from' : row[4]
+      #  'nbooked' : row[5],
+      #  'vehicle_capacity' : row[6]
     } for row in journeys_db]
 
     return journeys
@@ -604,3 +713,4 @@ def to_json(fn_name, ret_val):
 
 # =================================================================
 # =================================================================
+        
