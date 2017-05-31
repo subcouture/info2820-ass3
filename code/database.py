@@ -95,11 +95,11 @@ def check_login(member_id, password):
                      WHERE member_id=%s"""
             cur.execute(sql,(member_id,))
             if(cur.rowcount != 0): #if user is official
-                member_type = ["Official"]
+                member_type = ["official"]
             else:
-                member_type = ["Staff"]
+                member_type = ["staff"]
         else:
-            member_type = ["Athlete"]
+            member_type = ["athlete"]
 
 
         cur.close()
@@ -153,13 +153,55 @@ def member_details(member_id, mem_type):
 
     # TODO - Dummy Data (Try to keep the same format)
     # Accommodation [name, address, gps_lat, gps_long]
-    accom_rows = ['SIT', '123 Some Street, Boulevard', '-33.887946', '151.192958']
+
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+
+    try:
+
+        sql = """SELECT *
+                 FROM public.member
+                 WHERE member_id=%s"""
+        cur.execute(sql,(member_id,))
+        member = cur.fetchone()
+
+        sql = """SELECT *
+                 FROM public.Place
+                 WHERE place_id=%s""" 
+        cur.execute(sql,[member[5]])
+        place_info = cur.fetchone()
+    except:
+        print("Error When Searching Accom Info")
+        connection.close()
+        cur.close()
+        return None
+
+    accom_rows = [place_info[1],place_info[4],place_info[3],place_info[2]]
 
     # Check what type of member we are
     if(mem_type == 'athlete'):
-        # TODO get the details for athletes
+
+        # get the details for athletes
         # Member details [total events, total gold, total silver, total bronze, number of bookings]
-        member_information_db = [5, 2, 1, 2, 20]
+        try: 
+            sql = """SELECT 
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s) as total_event,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'G') as gold,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'S') as silver,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'B') as bronze,
+                     (SELECT COUNT(*) FROM Booking WHERE booked_for = %s) as booking"""
+                      
+            cur.execute(sql,(member_id,member_id,member_id,member_id,member_id))
+            details = cur.fetchone()
+        except:
+            print("Error When Searching Athlete Info")
+            connection.close()
+            cur.close()
+            return None
+
+        member_information_db = [details[0],details[1],details[2],details[3],details[4]]
 
         member_information = {
             'total_events': member_information_db[0],
@@ -172,7 +214,31 @@ def member_details(member_id, mem_type):
 
         # TODO get the relevant information for an official
         # Official = [ Role with greatest count, total event count, number of bookings]
-        member_information_db = ['Judge', 10, 20]
+        #test A000022388
+        try:
+            sql = """SELECT role,max(record.count) as max
+                     FROM(SELECT role, COUNT(*) as count
+                          FROM RunsEvent
+                          WHERE member_id=%s
+                          GROUP BY role) as record
+                     GROUP BY role"""
+            cur.execute(sql,(member_id,))
+            role = cur.fetchone() #assume unqiue
+            if(role is None):
+                role = ["No role"] #prevent programing from crashing because unvalid example data
+            
+            sql = """SELECT
+                     (SELECT COUNT(*) FROM RunsEvent WHERE member_id=%s) as total_event,
+                     (SELECT COUNT(*) FROM Booking WHERE booked_for = %s) as bookings"""
+            cur.execute(sql,(member_id,member_id))
+            details = cur.fetchone()
+        except:
+            print("Error When getting official info")
+            cur.close()
+            connection.close()
+            return None
+
+        member_information_db = [role[0],details[0],details[1]]
 
         member_information = {
             'favourite_role' : member_information_db[0],
@@ -183,9 +249,22 @@ def member_details(member_id, mem_type):
 
         # TODO get information for staff member
         # Staff = [number of bookings ]
-        member_information_db = [10]
+        try:
+            sql = """SELECT COUNT(*) FROM Booking WHERE booked_for=%s"""
+
+            cur.execute(sql,(member_id,))
+            details = cur.fetchone()
+        except:
+            print("Error When getting staff info")
+            cur.close()
+            connection.close()
+            return None
+
+        member_information_db =[details[0]]
         member_information = {'bookings': member_information_db[0]}
 
+    cur.close()
+    connection.close()
     accommodation_details = {
         'name': accom_rows[0],
         'address': accom_rows[1],
@@ -231,6 +310,11 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
         cur.execute(sql,(my_member_id,))
         if (cur.rowcount == 0):
             return False
+        #check member exists
+        sql = "SELECT * FROM member WHERE member_id=%s"
+        cur.execute(sql,(member_id,))
+        if (cur.rowcount == 0):
+            return False
         
         #get vehicle capacity
         sql = "SELECT capacity FROM public.Vehicle WHERE vehicle_code=%s"
@@ -240,12 +324,37 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
         val = cur.fetchone()
         capacity = int(val[0])
         
-        #ger num_booking on this vehicle at this time  BB62AC75
-
-        sql = "SELECT nbooked FROM Journey WHERE vehicle_code=%s AND depart_time=%s"
-
+        #get num_booking on this vehicle at this time  BB62AC75
+        time = date + " "  + hour + ":00"
+        sql = "SELECT nbooked, journey_id FROM Journey WHERE vehicle_code=%s AND depart_time=%s AND from_place=%s AND to_place=%s"
+        cur.execute(sql,(vehicle,time,start_destination,end_destination))
+        if (cur.rowcount == 0): #no such journey
+            return False
+        val = cur.fetchone()
+        nbooked = int(val[0])
+        journey_id = val[1]
+        
+        if(nbooked > capacity): #if no space
+            return False
+        
+        #then everything should be good to go
+        try:
+            sql = "INSERT INTO Booking VALUES(%s,%s,CURRENT_TIMESTAMP,%s);"
+            cur.execute(sql,(member_id,my_member_id,journey_id))
+            sql = "UPDATE Journey SET nbooked = nbooked + 1 WHERE vehicle_code = %s AND depart_time = %s"
+            cur.execute(sql,(vehicle_code,time))
+            connection.commit()
+        except:
+            connection.rollback()
+            cur.close()
+            connection.close() 
+            return None
+    cur.close()
+    connection.close()
     except:
         return False
+    cur.close()
+    connection.close()
     return True
 
 '''
@@ -589,8 +698,21 @@ def all_events():
     # Get all the events that are running.
     # Return the data (NOTE: look at the information, requires more than a simple select. NOTE ALSO: ordering of columns)
     # It is a list of lists
-    # Chronologically order them by start
+    # Chronologically order them by starA
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
 
+    try:
+        sql = """SELECT event_name, 
+                 TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00') as time,
+                 sport_name,place_name,event_gender,event_id
+                 FROM Event JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
+                 """
+        cur.execute(sql)
+        val = cur.fetchall()
+        ### unfinished  
     # Format:
     # [
     #   [name, start, sport, venue_name]
