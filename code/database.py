@@ -725,7 +725,8 @@ def all_events():
                 sport_venue,
                 event_gender,
                 event_id
-                FROM public.event JOIN public.sport ON (public.event.sport_id = public.Sport.sport_id)"""
+                FROM public.event JOIN public.sport ON (public.event.sport_id = public.Sport.sport_id)
+                ORDER BY event_start"""
         cur.execute(sql,)
         lists = cur.fetchall()
     except:
@@ -765,10 +766,27 @@ def all_events_sport(sportname):
     #   [name, start, sport, venue_name]
     # ]
 
-    events_db = [
-        ['1km Women\'s Cycle', '1800', 'Cycling', 'Velodrome', 'W', '0401'],
-        ['1km Men\'s Cycle', '1920', 'Cycling', 'Velodrome', 'X', '1432']
-    ]
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+
+    try:
+        sql = """SELECT event_name,
+                TO_CHAR(EXTRACT(hour from event_start), 'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
+                sport_name,
+                sport_venue,
+                event_gender,
+                event_id
+                FROM public.event JOIN public.sport ON (public.event.sport_id = public.Sport.sport_id)
+                WHERE lower(sport_name) LIKE lower(%s)
+                ORDER BY event_start"""
+        cur.execute(sql,(sportname,))
+        lists = cur.fetchall()
+    except:
+        return None
+
+    events_db = lists
 
     events = [{
         'name': row[0],
@@ -778,6 +796,10 @@ def all_events_sport(sportname):
         'gender': row[4],
         'event_id': row[5]
     } for row in events_db]
+
+
+    cur.close()
+    connection.close()
 
     return events
 
