@@ -5,7 +5,7 @@ import configparser
 import json
 
 #####################################################
-##  Database Connect
+##  Database Connect  -- FINISHED
 #####################################################
 
 '''
@@ -37,7 +37,7 @@ def database_connect():
     return connection
 
 #####################################################
-##  Login
+##  Login -- FINISHED
 #####################################################
 
 
@@ -133,7 +133,7 @@ def check_login(member_id, password):
     return tuples
 
 #####################################################
-## Member Information
+## Member Information -- FINISHED
 #####################################################
 
 '''
@@ -326,10 +326,38 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
 
         #ger num_booking on this vehicle at this time  BB62AC75
 
-        sql = "SELECT nbooked FROM Journey WHERE vehicle_code=%s AND depart_time=%s"
+        time = date + " "  + hour + ":00"
+        sql = "SELECT nbooked, journey_id FROM Journey WHERE vehicle_code=%s AND depart_time=%s AND from_place=%s AND to_place=%s"
+        cur.execute(sql,(vehicle,time,start_destination,end_destination))
+        if (cur.rowcount == 0): #no such journey
+            return False
+        val = cur.fetchone()
+        nbooked = int(val[0])
+        journey_id = val[1]
+
+        if(nbooked > capacity): #if no space
+            return False
+
+        try:
+            sql = "INSERT INTO Booking VALUES(%s,%s,CURRENT_TIMESTAMP,%s);"
+            cur.execute(sql,(member_id,my_member_id,journey_id))
+            sql = "UPDATE Journey SET nbooked = nbooked + 1 WHERE vehicle_code = %s AND depart_time = %s"
+            cur.execute(sql,(vehicle_code,time))
+            connection.commit()
+        except:
+            print("connection error")
+            connection.rollback()
+            cur.close()
+            connection.close()
+            return None
+        cur.close()
+        connection.close()
+
 
     except:
         return False
+        cur.close()
+        connection.close()
     return True
 
 '''
