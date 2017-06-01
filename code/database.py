@@ -153,13 +153,53 @@ def member_details(member_id, mem_type):
 
     # TODO - Dummy Data (Try to keep the same format)
     # Accommodation [name, address, gps_lat, gps_long]
-    accom_rows = ['SIT', '123 Some Street, Boulevard', '-33.887946', '151.192958']
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+
+    try:
+
+        sql = """SELECT *
+                 FROM public.member
+                 WHERE member_id=%s"""
+        cur.execute(sql,(member_id,))
+        member = cur.fetchone()
+
+        sql = """SELECT *
+                 FROM public.Place
+                 WHERE place_id=%s"""
+        cur.execute(sql,[member[5]])
+        place_info = cur.fetchone()
+    except:
+        print("Error When Searching Accom Info")
+        connection.close()
+        cur.close()
+        return None
+
+    accom_rows = [place_info[1],place_info[4],place_info[3],place_info[2]]
 
     # Check what type of member we are
     if(mem_type == 'athlete'):
         # TODO get the details for athletes
         # Member details [total events, total gold, total silver, total bronze, number of bookings]
-        member_information_db = [5, 2, 1, 2, 20]
+        try:
+            sql = """SELECT
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s) as total_event,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'G') as gold,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'S') as silver,
+                     (SELECT COUNT(*) FROM Participates WHERE athlete_id = %s AND medal = 'B') as bronze,
+                     (SELECT COUNT(*) FROM Booking WHERE booked_for = %s) as booking"""
+
+            cur.execute(sql,(member_id,member_id,member_id,member_id,member_id))
+            details = cur.fetchone()
+        except:
+            print("Error When Searching Athlete Info")
+            connection.close()
+            cur.close()
+            return None
+
+        member_information_db = [details[0],details[1],details[2],details[3],details[4]]
 
         member_information = {
             'total_events': member_information_db[0],
@@ -172,7 +212,31 @@ def member_details(member_id, mem_type):
 
         # TODO get the relevant information for an official
         # Official = [ Role with greatest count, total event count, number of bookings]
-        member_information_db = ['Judge', 10, 20]
+        #test A000022388
+        try:
+            sql = """SELECT role,max(record.count) as max
+                     FROM(SELECT role, COUNT(*) as count
+                          FROM RunsEvent
+                          WHERE member_id=%s
+                          GROUP BY role) as record
+                     GROUP BY role"""
+            cur.execute(sql,(member_id,))
+            role = cur.fetchone() #assume unqiue
+            if(role is None):
+                role = ["No role"] #prevent programing from crashing because unvalid example data
+
+            sql = """SELECT
+                     (SELECT COUNT(*) FROM RunsEvent WHERE member_id=%s) as total_event,
+                     (SELECT COUNT(*) FROM Booking WHERE booked_for = %s) as bookings"""
+            cur.execute(sql,(member_id,member_id))
+            details = cur.fetchone()
+        except:
+            print("Error When getting official info")
+            cur.close()
+            connection.close()
+            return None
+
+        member_information_db = [role[0],details[0],details[1]]
 
         member_information = {
             'favourite_role' : member_information_db[0],
@@ -183,7 +247,18 @@ def member_details(member_id, mem_type):
 
         # TODO get information for staff member
         # Staff = [number of bookings ]
-        member_information_db = [10]
+        try:
+            sql = """SELECT COUNT(*) FROM Booking WHERE booked_for=%s"""
+
+            cur.execute(sql,(member_id,))
+            details = cur.fetchone()
+        except:
+            print("Error When getting staff info")
+            cur.close()
+            connection.close()
+            return None
+
+        member_information_db =[details[0]]
         member_information = {'bookings': member_information_db[0]}
 
     accommodation_details = {
@@ -192,6 +267,9 @@ def member_details(member_id, mem_type):
         'gps_lat': accom_rows[2],
         'gps_lon': accom_rows[3]
     }
+
+    cur.close()
+    connection.close()
 
     # Leave the return, this is being handled for marking/frontend.
     return {'accommodation': accommodation_details, 'member_details': member_information}
@@ -226,6 +304,12 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
     cur = connection.cursor(); #get cursor
 
     try:
+        #check member exists
+        sql = "SELECT * FROM member WHERE member_id=%s"
+        cur.execute(sql,(member_id,))
+        if (cur.rowcount == 0):
+            return False
+
         #check if member is a Staff
         sql = "SELECT * FROM public.Staff WHERE member_id=%s"
         cur.execute(sql,(my_member_id,))
