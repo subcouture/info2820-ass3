@@ -32,7 +32,7 @@ def database_connect():
         internet connection)
         """)
         print(e)
-    
+
     # return the connection to use
     return connection
 
@@ -75,14 +75,14 @@ def check_login(member_id, password):
                  WHERE country_code=%s"""
         cur.execute(sql,[member[4]])
         country_name = cur.fetchone()
-        
+
         #select residence
         sql = """SELECT place_name
-                 FROM   public.place 
+                 FROM   public.place
                  WHERE place_id=%s"""
         cur.execute(sql,[member[5]])
         residence = cur.fetchone()
-        
+
         #check member type
         sql = """SELECT *
                  FROM public.Athlete
@@ -231,7 +231,7 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
         cur.execute(sql,(my_member_id,))
         if (cur.rowcount == 0):
             return False
-        
+
         #get vehicle capacity
         sql = "SELECT capacity FROM public.Vehicle WHERE vehicle_code=%s"
         cur.execute(sql,(vehicle,))
@@ -239,7 +239,7 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
             return False
         val = cur.fetchone()
         capacity = int(val[0])
-        
+
         #ger num_booking on this vehicle at this time  BB62AC75
 
         sql = "SELECT nbooked FROM Journey WHERE vehicle_code=%s AND depart_time=%s"
@@ -270,8 +270,8 @@ def all_bookings(member_id):
         if (connection is None):
             return None
         cur = connection.cursor()
-        
-        sql = """SELECT vehicle_code, 
+
+        sql = """SELECT vehicle_code,
                  TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
                  TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
                  (SELECT place_name FROM public.Place WHERE place_id = to_place) as to_place,
@@ -279,7 +279,7 @@ def all_bookings(member_id):
                  FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.Place P1 ON(from_place = P1.place_id) JOIN public.Place P2 ON(to_place = P2.place_id) JOIN Booking USING(journey_id)
                  WHERE Booking.booked_for = %s
                  ORDER BY day,time,to_place,from_place,vehicle_code"""
-        
+
         cur.execute(sql,(member_id,))
         lists = cur.fetchall()
         cur.close()
@@ -289,7 +289,7 @@ def all_bookings(member_id):
         cur.close()
         connection.close()
         return None
-    
+
    #bookings_db = [
    #    [ 'BL4Z3D', '17/05/2017', '2100', 'SIT', 'Wentworth'],
    #    [ 'TR870R', '21/12/2020', '0600', 'Velodrome', 'Urbanest']
@@ -331,8 +331,8 @@ def day_bookings(member_id, day):
         if (connection is None):
             return None
         cur = connection.cursor()
-        
-        sql = """SELECT vehicle_code, 
+
+        sql = """SELECT vehicle_code,
                  TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
                  TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
                  (SELECT place_name FROM public.Place WHERE place_id = to_place) as to_place,
@@ -343,7 +343,7 @@ def day_bookings(member_id, day):
                  AND EXTRACT(MONTH FROM depart_time) = %s
                  AND EXTRACT(day FROM depart_time) = %s
                  ORDER BY day,time,to_place,from_place,vehicle_code"""
-        
+
         cur.execute(sql,(member_id,year,month,day))
         lists = cur.fetchall()
         cur.close()
@@ -382,17 +382,17 @@ def get_booking(b_date, b_hour, vehicle, from_place, to_place, member_id):
     #13/12/2017
     year = b_date[6:]
     month = b_date[3:5]
-    day = b_date[0:2] 
+    day = b_date[0:2]
     try:
         connection = database_connect()
         if (connection is None):
             return None
         cur = connection.cursor()
-        
+
 
         #journey_id,booked_for is pm for booking
         #vehicle_Code, depart_time is pm for journey
-        sql = """SELECT vehicle_code, 
+        sql = """SELECT vehicle_code,
                  ((SELECT given_names FROM Member WHERE member_id = booked_by) || ' ' ||  (SELECT family_name FROM Member WHERE member_id = booked_by)) as booked_by,
                  TO_CHAR(EXTRACT(DAY FROM when_booked),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as when_booked
                  FROM Booking JOIN Journey USING(journey_id) join member ON (booked_by = member_id)
@@ -401,7 +401,7 @@ def get_booking(b_date, b_hour, vehicle, from_place, to_place, member_id):
                  AND EXTRACT(MONTH FROM depart_time) = %s
                  AND EXTRACT(day FROM depart_time) = %s
                  AND vehicle_code = %s"""
-        
+
         cur.execute(sql,(member_id,year,month,day,vehicle))
         val = cur.fetchone()
         cur.close()
@@ -446,7 +446,7 @@ def all_journeys(from_place, to_place):
     if (connection is None):
         return None
     cur = connection.cursor()
-    
+
     try:
         sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
         cur.execute(sql,(from_place,))
@@ -457,8 +457,8 @@ def all_journeys(from_place, to_place):
         to_placeID = cur.fetchone()
 
         sql = """SELECT vehicle_code,
-	TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day, 
-	TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time, 
+	TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
+	TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
 	(SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
 
 	(SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
@@ -475,7 +475,7 @@ def all_journeys(from_place, to_place):
         connection.close()
         print("Error when Searching for all journeys")
         return None
-    
+
     # Format:
     # [
     #   [ vehicle, day, time, to, from, nbooked, vehicle_capacity],
@@ -514,7 +514,7 @@ def get_day_journeys(from_place, to_place, journey_date):
     if (connection is None):
         return None
     cur = connection.cursor()
-    
+
     try:
         sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
         cur.execute(sql,(from_place,))
@@ -523,18 +523,18 @@ def get_day_journeys(from_place, to_place, journey_date):
         sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
         cur.execute(sql,(to_place,))
         to_placeID = cur.fetchone()
-        
+
         #2017-12-13
         year = int(journey_date[0:4])
         month = int(journey_date[5:7])
         day = int(journey_date[8:])
-        
+
         print(year)
         print(month)
         print(day)
         sql = """SELECT vehicle_code,
-	TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day, 
-	TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time, 
+	TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
+	TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
 	(SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
 
 	(SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
@@ -560,7 +560,7 @@ def get_day_journeys(from_place, to_place, journey_date):
     #   [ vehicle, day, time, to, from, nbooked, vehicle_capacity],
     #   ...
     # ]
-    journeys_db = lists    
+    journeys_db = lists
     journeys = [{
         'vehicle': row[0],
         'start_day': row[1],
@@ -708,7 +708,7 @@ def event_details(event_id):
 Get the results for a given event.
 '''
 def get_results_for_event(event_id):
-    
+
     # TODO - update the results_db to get information from the database!
     # Return the data (NOTE: look at the information, requires more than a simple select. NOTE ALSO: ordering of columns)
     # This should return a list of who participated and the results.
@@ -781,4 +781,3 @@ def to_json(fn_name, ret_val):
 
 # =================================================================
 # =================================================================
-
