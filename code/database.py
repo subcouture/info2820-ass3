@@ -345,14 +345,17 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
             cur.execute(sql,(vehicle_code,time))
             connection.commit()
         except:
+            print("cannot make the booking")
             connection.rollback()
             cur.close()
             connection.close() 
-            return None
-    cur.close()
-    connection.close()
+            return False
     except:
+        print("Error when making a booking")
+        cur.close()
+        connection.close()
         return False
+
     cur.close()
     connection.close()
     return True
@@ -706,22 +709,30 @@ def all_events():
 
     try:
         sql = """SELECT event_name, 
-                 TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00') as time,
+                 TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
                  sport_name,place_name,event_gender,event_id
                  FROM Event JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
+                 ORDER BY time
                  """
         cur.execute(sql)
-        val = cur.fetchall()
-        ### unfinished  
+        lists = cur.fetchall()
+    except:
+        print("Error when searching all events")
+        cur.close()
+        connection.close()
+        return None
+
+    cur.close()
+    connection.close()
     # Format:
     # [
     #   [name, start, sport, venue_name]
     # ]
-    events_db = [
-        ['200M Freestyle', '0800', 'Swimming', 'Olympic Swimming Pools', 'M', '123'],
-        ['1km Women\'s Cycle', '1800', 'Cycling', 'Velodrome', 'W', '001']
-    ]
-
+   #events_db = [
+   #    ['200M Freestyle', '0800', 'Swimming', 'Olympic Swimming Pools', 'M', '123'],
+   #    ['1km Women\'s Cycle', '1800', 'Cycling', 'Velodrome', 'W', '001']
+   #]
+    events_db = lists
     events = [{
         'name': row[0],
         'start': row[1],
@@ -745,15 +756,33 @@ def all_events_sport(sportname):
     # It is a list of lists
     # Chronologically order them by start
 
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+    try:
+        sql = """SELECT event_name, 
+                 TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
+                 sport_name,place_name,event_gender,event_id
+                 FROM Event JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
+                 WHERE sport_name = %s
+                 ORDER BY time
+                 """
+        cur.execute(sql,(sportname,))
+        lists = cur.fetchall()
+    except:
+        print("Error when searching the event")
+        cur.close()
+        connection.close()
+        return None
+    cur.close()
+    connection.close()
     # Format:
     # [
     #   [name, start, sport, venue_name]
     # ]
 
-    events_db = [
-        ['1km Women\'s Cycle', '1800', 'Cycling', 'Velodrome', 'W', '0401'],
-        ['1km Men\'s Cycle', '1920', 'Cycling', 'Velodrome', 'X', '1432']
-    ]
+    events_db = lists
 
     events = [{
         'name': row[0],
@@ -769,23 +798,40 @@ def all_events_sport(sportname):
 '''
 Get all of the events a certain member is participating in.
 '''
-def get_events_for_member(member_id):
+def get_events_for_member(member_id):  #did not find the html page
 
     # TODO - update the events_db variable to pull from the database
     # Return the data (NOTE: look at the information, requires more than a simple select. NOTE ALSO: ordering of columns)
     # It is a list of lists
     # Chronologically order them by start
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+    try:
+        sql = """SELECT event_name, 
+                 TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
+                 sport_name,place_name,event_gender
+                 FROM Participates JOIN Event USING(event_id) JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
+                 WHERE athlete_id = %s
+                 ORDER BY time
+                 """
+        cur.execute(sql,(member_id,))
+        lists = cur.fetchall()
+    except:
+        print("Error when searching athlete event") 
+        cur.close()
+        connection.close()
+        return None
+    cur.close()
+    connection.close()
 
     # Format:
     # [
     #   [name, start, sport, venue_name]
     # ]
 
-    events_db = [
-        ['1km Women\'s Cycle', '1800', 'Cycling', 'Velodrome', 'W'],
-        ['1km Men\'s Cycle', '1920', 'Cycling', 'Velodrome', 'X']
-
-    ]
+    events_db = lists
 
     events = [{
         'name': row[0],
@@ -803,11 +849,32 @@ Get event information for a certain event
 def event_details(event_id):
     # TODO - update the event_db to get that particular event
     # Return the data (NOTE: look at the information, requires more than a simple select. NOTE ALSO: ordering of columns)
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+    try:
+        sql = """SELECT event_name, 
+                 TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
+                 sport_name,place_name,event_gender
+                 FROM  Event JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
+                 WHERE event_id = %s
+                 ORDER BY time
+                 """
+        cur.execute(sql,(event_id,))
+        val = cur.fetchone()
+    except:
+        print("Error when searching event_details") 
+        cur.close()
+        connection.close()
+        return None
+    cur.close()
+    connection.close()
 
     # Get the details for this event
     # Format:
     #   [name, start, sport, venue_name]
-    event_db = ['1km Women\'s Cycle', '1800', 'Cycling', 'Velodrome', 'W']
+    event_db = val 
 
 
     event = {
@@ -837,21 +904,52 @@ def get_results_for_event(event_id):
 
     # This is a list of lists.
     # Order by ranking of medal, then by type (e.g. points/time/etc.)
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
 
+    try:
+        sql = """(SELECT athlete_id, 'Gold' FROM Participates WHERE medal = 'G' AND event_id = %s)""" 
+        cur.execute(sql,(event_id,))
+        gold = cur.fetchone()
+        
+        sql = """(SELECT athlete_id, 'Silver' FROM Participates WHERE medal = 'S' AND event_id = %s)""" 
+        cur.execute(sql,(event_id,))
+        silver = cur.fetchone()
+
+        sql = """(SELECT athlete_id, 'Bronze' FROM Participates WHERE medal = 'B' AND event_id = %s)""" 
+        cur.execute(sql,(event_id,))
+        bronze = cur.fetchone()
+
+        sql = """SELECT athlete_id, ' ' FROM Participates WHERE medal is NULL AND event_id = %s"""
+        cur.execute(sql,(event_id,))
+        others = cur.fetchone()
+        results = [gold,silver,bronze]
+        while(others is not None):
+            results.append(others)
+            others = cur.fetchone()
+    except:
+        print("Error When Seaching for result")
+        cur.close()
+        connection.close()
+        return None
+    cur.close()
+    connection.close()
     # Format:
     # [
     #   [member_id, result, medal],
     #   ...
     # ]
 
-    results_db = [
-        ['1234567890', 'Gold'],
-        ['8761287368', 'Silver'],
-        ['1638712633', 'Bronze'],
-        ['5873287436', ''],
-        ['6328743234', '']
-    ]
-
+   #results_db = [
+   #    ['1234567890', 'Gold'],
+   #    ['8761287368', 'Silver'],
+   #    ['1638712633', 'Bronze'],
+   #    ['5873287436', ''],
+   #    ['6328743234', '']
+   #]
+    results_db = results
     results =[{
         'member_id': row[0],
         'medal': row[1]
@@ -874,15 +972,33 @@ def get_all_officials(event_id):
     #   [member_id, role],
     #   ...
     # ]
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+
+    try:
+        sql = "SELECT member_id, role FROM RunsEvent WHERE event_id = %s"
+        cur.execute(sql,(event_id,))
+        lists = cur.fetchall()
+    except:
+        print("Error when searching for offical and their roles")
+        cur.close()
+        connection.close()
+        return None
+    cur.close()
+    connection.close()
 
 
-    officials_db = [
-        ['1234567890', 'Judge'],
-        ['8761287368', 'Medal Holder'],
-        ['1638712633', 'Random Bystander'],
-        ['5873287436', 'Umbrella Holder'],
-        ['6328743234', 'Marshall']
-    ]
+   #officials_db = [
+   #    ['1234567890', 'Judge'],
+   #    ['8761287368', 'Medal Holder'],
+   #    ['1638712633', 'Random Bystander'],
+   #    ['5873287436', 'Umbrella Holder'],
+   #    ['6328743234', 'Marshall']
+   #]
+
+    officials_db = lists
 
     officials = [{
         'member_id': row[0],
@@ -901,6 +1017,4 @@ def get_all_officials(event_id):
 def to_json(fn_name, ret_val):
     return {'function': fn_name, 'res': json.dumps(ret_val)}
 
-# =================================================================
-# =================================================================
 
