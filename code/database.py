@@ -302,11 +302,21 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
     if (connection is None):
         return False
     cur = connection.cursor(); #get cursor
+    print(my_member_id, for_member, vehicle, date, hour, start_destination, end_destination)
 
     try:
+
+        #check if member is a Staff
+        sql = "SELECT * FROM public.Staff WHERE member_id=%s"
+        cur.execute(sql,(my_member_id,))
+        print("member is a staff: ",cur.rowcount)
+        if (cur.rowcount == 0):
+            return False
+
         #check member exists
         sql = "SELECT * FROM member WHERE member_id=%s"
-        cur.execute(sql,(member_id,))
+        cur.execute(sql,(for_member,))
+        print("member is exists:",cur.rowcount)
         if (cur.rowcount == 0):
             return False
 
@@ -324,16 +334,25 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
         val = cur.fetchone()
         capacity = int(val[0])
 
-        #ger num_booking on this vehicle at this time  BB62AC75
+        print("capacity is", capacity)
+        
+        #get num_booking on this vehicle at this time  BB62AC75
+        time = date + " "  + hour + ":00:00"
+        print(time)
+        sql = """SELECT nbooked, journey_id FROM Journey JOIN place P1 ON(from_place = P1.place_id) JOIN place P2 On(to_place = P2.place_id)
+               WHERE vehicle_code=%s AND depart_time=%s AND P1.place_name=%s AND P2.place_name=%s"""
 
-        time = date + " "  + hour + ":00"
-        sql = "SELECT nbooked, journey_id FROM Journey WHERE vehicle_code=%s AND depart_time=%s AND from_place=%s AND to_place=%s"
-        cur.execute(sql,(vehicle,time,start_destination,end_destination))
+        cur.execute(sql,(str(vehicle),str(time),str(start_destination),str(end_destination)))
+        print(rowcount)
+
         if (cur.rowcount == 0): #no such journey
             return False
         val = cur.fetchone()
         nbooked = int(val[0])
         journey_id = val[1]
+
+        print("nbooked is ",nbooked)
+        print("journey_id is ",journey_id)
 
         if(nbooked > capacity): #if no space
             return False
@@ -1042,6 +1061,8 @@ def get_all_officials(event_id):
 def to_json(fn_name, ret_val):
     return {'function': fn_name, 'res': json.dumps(ret_val)}
 
+# =================================================================
+# =================================================================
 
 # =================================================================
 # =================================================================
