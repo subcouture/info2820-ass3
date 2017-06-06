@@ -591,45 +591,51 @@ def all_journeys_recursive(from_location, to_location):
                 TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
                 TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
 
-                (WITH RECURSIVE parent AS (
-                    SELECT location_id, name
-                    FROM location
-                    WHERE location_id = %s
-                ), tree AS (
-                    SELECT x.place_name, x.located_in, parent.name
-                    FROM place x
-                    INNER JOIN parent ON x.located_in = parent.location_id
-                    UNION ALL
-                    (SELECT y.place_name, y.located_in, z.name
-                    FROM place y INNER JOIN location z on y.located_in = z.location_id
-                    INNER JOIN tree t ON z.name = t.place_name
-                    WHERE y.place_name NOT IN (SELECT t.place_name)
-                    )
-                )
-                SELECT place_name
-                FROM tree ) as to_place,
+                to_place,
 
-                (WITH RECURSIVE parent AS (
-                    SELECT location_id, name
-                    FROM location
-                    WHERE location_id = %s
-                ), tree AS (
-                    SELECT x.place_name, x.located_in, parent.name
-                    FROM place x
-                    INNER JOIN parent ON x.located_in = parent.location_id
-                    UNION ALL
-                    (SELECT y.place_name, y.located_in, z.name
-                    FROM place y INNER JOIN location z on y.located_in = z.location_id
-                    INNER JOIN tree t ON z.name = t.place_name
-                    WHERE y.place_name NOT IN (SELECT t.place_name)
-                    )
-                )
-                SELECT place_name
-                FROM tree ) as from_place,,
+
+                from_place,
 
                 nbooked,capacity
 
-                FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.location P1 ON(journey.from_location = P1.location_id) JOIN public.location P2 ON(journey.to_location = P2.location_id)
+                FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN
+
+                (WITH RECURSIVE parent AS (
+                SELECT location_id, name
+                FROM location
+                WHERE location_id = %s
+            ), tree AS (
+                SELECT x.place_name, x.place_id, x.located_in, parent.name
+                FROM place x
+                INNER JOIN parent ON x.located_in = parent.location_id
+                UNION ALL
+                (SELECT y.place_name, y.place_id, y.located_in, z.name
+                FROM place y INNER JOIN location z on y.located_in = z.location_id
+                INNER JOIN tree t ON z.name = t.place_name
+                WHERE y.place_name NOT IN (SELECT t.place_name)
+                )
+                )
+                SELECT *
+                FROM tree)
+                P1 ON(journey.from_location = P1.place_id) JOIN
+                (WITH RECURSIVE parent AS (
+                SELECT location_id, name
+                FROM location
+                WHERE location_id = 40
+            ), tree AS (
+                SELECT x.place_name, x.place_id, x.located_in, parent.name
+                FROM place x
+                INNER JOIN parent ON x.located_in = parent.location_id
+                UNION ALL
+                (SELECT y.place_name, y.place_id, y.located_in, z.name
+                FROM place y INNER JOIN location z on y.located_in = z.location_id
+                INNER JOIN tree t ON z.name = t.place_name
+                WHERE y.place_name NOT IN (SELECT t.place_name)
+                )
+                )
+                SELECT *
+                FROM tree)
+                P2 ON(journey.to_location = P2.place_id)
 
                 ORDER BY day,time,to_place,from_from, vehicle_code
 
