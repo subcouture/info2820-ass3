@@ -335,7 +335,7 @@ def make_booking(my_member_id, for_member, vehicle, date, hour, start_destinatio
         capacity = int(val[0])
 
         print("capacity is", capacity)
-        
+
         #get num_booking on this vehicle at this time  BB62AC75
         time = date + " "  + hour + ":00:00"
         print(time)
@@ -567,6 +567,75 @@ def get_booking(b_date, b_hour, vehicle, from_place, to_place, member_id):
 '''
 List all the journeys between two places.
 '''
+
+def all_journeys_recursive(from_place, to_place):
+
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+
+    try:
+        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
+        cur.execute(sql,(from_place,))
+        from_placeID = cur.fetchone()
+
+        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
+        cur.execute(sql,(to_place,))
+        to_placeID = cur.fetchone()
+
+        sql = """
+
+                SELECT vehicle_code,
+
+                TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
+                TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
+
+                (SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
+
+                (SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
+                nbooked,capacity
+
+                 FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.Place P1 ON(from_place = P1.place_id) JOIN public.Place P2 ON(to_place = P2.place_id)
+                 WHERE from_place=%s and to_place=%s
+                 ORDER BY day,time,to_place,from_place,vehicle_code
+
+              """
+
+        cur.execute(sql,[to_placeID[0],from_placeID[0],from_placeID[0],to_placeID[0]])
+        lists = cur.fetchall()
+        cur.close()
+        connection.close()
+    except:
+        cur.close()
+        connection.close()
+        print("Error when Searching for all journeys")
+        return None
+
+    # Format:
+    # [
+    #   [ vehicle, day, time, to, from, nbooked, vehicle_capacity],
+    #   ...
+    # ]
+    #journeys_db = [
+    #['TR470R', '21/12/2020', '0600', 'SIT', 'Wentworth', 7, 8]
+    #]
+    journeys_db = lists
+
+
+    journeys = [{
+        'vehicle': row[0],
+        'start_day': row[1],
+        'start_time': row[2],
+        'to' : row[3],
+        'from' : row[4],
+        'booked' : row[5],
+        'capacity' : row[6]
+    } for row in journeys_db]
+
+    return journeys
+
+
 def all_journeys(from_place, to_place):
 
     # TODO - get a list of all journeys between two places!
@@ -588,16 +657,24 @@ def all_journeys(from_place, to_place):
         cur.execute(sql,(to_place,))
         to_placeID = cur.fetchone()
 
-        sql = """SELECT vehicle_code,
-	TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
-	TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
-	(SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
+        sql = """
 
-	(SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
-	nbooked,capacity
+                SELECT vehicle_code,
+
+                TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
+                TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
+
+                (SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
+
+                (SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
+                nbooked,capacity
+
                  FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.Place P1 ON(from_place = P1.place_id) JOIN public.Place P2 ON(to_place = P2.place_id)
                  WHERE from_place=%s and to_place=%s
-                 ORDER BY day,time,to_place,from_place,vehicle_code"""
+                 ORDER BY day,time,to_place,from_place,vehicle_code
+
+              """
+
         cur.execute(sql,[to_placeID[0],from_placeID[0],from_placeID[0],to_placeID[0]])
         lists = cur.fetchall()
         cur.close()
@@ -665,18 +742,22 @@ def get_day_journeys(from_place, to_place, journey_date):
         print(month)
         print(day)
         sql = """SELECT vehicle_code,
-	TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
-	TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
-	(SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
+	              TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
+	              TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
 
-	(SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
-	nbooked,capacity
-                 FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.Place P1 ON(from_place = P1.place_id) JOIN public.Place P2 ON(to_place = P2.place_id)
-                 WHERE from_place=%s AND to_place=%s
-                 AND EXTRACT(YEAR FROM depart_time) = %s
-                 AND EXTRACT(MONTH FROM depart_time) = %s
-                 AND EXTRACT(day FROM depart_time) = %s
-                 ORDER BY day,time,to_place,from_place,vehicle_code"""
+                  (SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
+
+                  (SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
+
+                  nbooked,capacity
+
+                  FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.Place P1 ON(from_place = P1.place_id) JOIN public.Place P2 ON(to_place = P2.place_id)
+                  WHERE from_place=%s AND to_place=%s
+                  AND EXTRACT(YEAR FROM depart_time) = %s
+                  AND EXTRACT(MONTH FROM depart_time) = %s
+                  AND EXTRACT(day FROM depart_time) = %s
+                  ORDER BY day,time,to_place,from_place,vehicle_code"""
+
         cur.execute(sql,[to_placeID[0],from_placeID[0],from_placeID[0],to_placeID[0],year,month,day])
         lists = cur.fetchall()
         cur.close()
@@ -724,7 +805,7 @@ def all_events():
     # Chronologically order them by start
 
     try:
-        sql = """SELECT event_name, 
+        sql = """SELECT event_name,
                  TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
                  sport_name,place_name,event_gender,event_id
                  FROM Event JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
@@ -781,7 +862,7 @@ def all_events_sport(sportname):
         return None
     cur = connection.cursor()
     try:
-        sql = """SELECT event_name, 
+        sql = """SELECT event_name,
                  TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
                  sport_name,place_name,event_gender,event_id
                  FROM Event JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
@@ -853,7 +934,7 @@ def get_events_for_member(member_id):  #did not find the html page
         return None
     cur = connection.cursor()
     try:
-        sql = """SELECT event_name, 
+        sql = """SELECT event_name,
                  TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
                  sport_name,place_name,event_gender
                  FROM Participates JOIN Event USING(event_id) JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
@@ -863,7 +944,7 @@ def get_events_for_member(member_id):  #did not find the html page
         cur.execute(sql,(member_id,))
         lists = cur.fetchall()
     except:
-        print("Error when searching athlete event") 
+        print("Error when searching athlete event")
         cur.close()
         connection.close()
         return None
@@ -898,7 +979,7 @@ def event_details(event_id):
         return None
     cur = connection.cursor()
     try:
-        sql = """SELECT event_name, 
+        sql = """SELECT event_name,
                  TO_CHAR(EXTRACT(hour FROM event_start),'fm00') || TO_CHAR(EXTRACT(minute FROM event_start),'fm00') as time,
                  sport_name,place_name,event_gender
                  FROM  Event JOIN Sport USING (sport_id) JOIN Place ON (sport_venue = place_id)
@@ -908,7 +989,7 @@ def event_details(event_id):
         cur.execute(sql,(event_id,))
         val = cur.fetchone()
     except:
-        print("Error when searching event_details") 
+        print("Error when searching event_details")
         cur.close()
         connection.close()
         return None
@@ -918,7 +999,7 @@ def event_details(event_id):
     # Get the details for this event
     # Format:
     #   [name, start, sport, venue_name]
-    event_db = val 
+    event_db = val
 
 
     event = {
@@ -954,15 +1035,15 @@ def get_results_for_event(event_id):
     cur = connection.cursor()
 
     try:
-        sql = """(SELECT athlete_id, 'Gold' FROM Participates WHERE medal = 'G' AND event_id = %s)""" 
+        sql = """(SELECT athlete_id, 'Gold' FROM Participates WHERE medal = 'G' AND event_id = %s)"""
         cur.execute(sql,(event_id,))
         gold = cur.fetchone()
-        
-        sql = """(SELECT athlete_id, 'Silver' FROM Participates WHERE medal = 'S' AND event_id = %s)""" 
+
+        sql = """(SELECT athlete_id, 'Silver' FROM Participates WHERE medal = 'S' AND event_id = %s)"""
         cur.execute(sql,(event_id,))
         silver = cur.fetchone()
 
-        sql = """(SELECT athlete_id, 'Bronze' FROM Participates WHERE medal = 'B' AND event_id = %s)""" 
+        sql = """(SELECT athlete_id, 'Bronze' FROM Participates WHERE medal = 'B' AND event_id = %s)"""
         cur.execute(sql,(event_id,))
         bronze = cur.fetchone()
 

@@ -256,6 +256,10 @@ def journeys():
     from_place = request.form['from_place']
     to_place = request.form['to_place']
     filter_date = request.form['filter_date']
+    try:
+        recursion = request.form['recursive_check']
+    except:
+        recursion = '0'
 
     journeys = None
     if(from_place == '' or to_place == ''):
@@ -263,11 +267,18 @@ def journeys():
         flash("Error, no from_place/to_place provided!")
         return redirect(url_for('journeys'))
 
-    # Check if the date is filtered
-    if(filter_date == ''):
-        journeys = database.all_journeys(from_place, to_place)
+    #Check if recursive
+
+    if(recursion == '1'):
+        if(filter_date == ''):
+            journeys = database.all_journeys_recursive(from_place, to_place)
+        else:
+            journeys = database.get_day_journeys_recursive(from_place, to_place, filter_date)
     else:
-        journeys = database.get_day_journeys(from_place, to_place, filter_date)
+        if(filter_date == ''):
+            journeys = database.all_journeys(from_place, to_place)
+        else:
+            journeys = database.get_day_journeys(from_place, to_place, filter_date)
 
     if(journeys is None):
         journeys = []
