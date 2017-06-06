@@ -568,7 +568,7 @@ def get_booking(b_date, b_hour, vehicle, from_place, to_place, member_id):
 List all the journeys between two places.
 '''
 
-def all_journeys_recursive(from_place, to_place):
+def all_journeys_recursive(from_location, to_location):
 
     connection = database_connect()
     if (connection is None):
@@ -576,13 +576,13 @@ def all_journeys_recursive(from_place, to_place):
     cur = connection.cursor()
 
     try:
-        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
-        cur.execute(sql,(from_place,))
-        from_placeID = cur.fetchone()
+        sql = "SELECT location_id FROM public.location WHERE name=%s"
+        cur.execute(sql,(from_location,))
+        from_locationID = cur.fetchone()
 
-        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
-        cur.execute(sql,(to_place,))
-        to_placeID = cur.fetchone()
+        sql = "SELECT location_id FROM public.location WHERE name=%s"
+        cur.execute(sql,(to_location,))
+        to_locationID = cur.fetchone()
 
         sql = """
 
@@ -591,18 +591,51 @@ def all_journeys_recursive(from_place, to_place):
                 TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
                 TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
 
-                (SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
+                (WITH RECURSIVE parent AS (
+                    SELECT location_id, name
+                    FROM location
+                    WHERE location_id = %s
+                ), tree AS (
+                    SELECT x.place_name, x.located_in, parent.name
+                    FROM place x
+                    INNER JOIN parent ON x.located_in = parent.location_id
+                    UNION ALL
+                    (SELECT y.place_name, y.located_in, z.name
+                    FROM place y INNER JOIN location z on y.located_in = z.location_id
+                    INNER JOIN tree t ON z.name = t.place_name
+                    WHERE y.place_name NOT IN (SELECT t.place_name)
+                    )
+                )
+                SELECT place_name
+                FROM tree ) as to_place,
 
-                (SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
+                (WITH RECURSIVE parent AS (
+                    SELECT location_id, name
+                    FROM location
+                    WHERE location_id = %s
+                ), tree AS (
+                    SELECT x.place_name, x.located_in, parent.name
+                    FROM place x
+                    INNER JOIN parent ON x.located_in = parent.location_id
+                    UNION ALL
+                    (SELECT y.place_name, y.located_in, z.name
+                    FROM place y INNER JOIN location z on y.located_in = z.location_id
+                    INNER JOIN tree t ON z.name = t.place_name
+                    WHERE y.place_name NOT IN (SELECT t.place_name)
+                    )
+                )
+                SELECT place_name
+                FROM tree ) as from_place,,
+
                 nbooked,capacity
 
-                 FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.Place P1 ON(from_place = P1.place_id) JOIN public.Place P2 ON(to_place = P2.place_id)
-                 WHERE from_place=%s and to_place=%s
-                 ORDER BY day,time,to_place,from_place,vehicle_code
+                FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.location P1 ON(journey.from_location = P1.location_id) JOIN public.location P2 ON(journey.to_location = P2.location_id)
+
+                ORDER BY day,time,to_place,from_from, vehicle_code
 
               """
 
-        cur.execute(sql,[to_placeID[0],from_placeID[0],from_placeID[0],to_placeID[0]])
+        cur.execute(sql,(to_locationID[0],from_locationID[0]))
         lists = cur.fetchall()
         cur.close()
         connection.close()
@@ -627,10 +660,85 @@ def all_journeys_recursive(from_place, to_place):
         'vehicle': row[0],
         'start_day': row[1],
         'start_time': row[2],
-        'to' : row[3],
-        'from' : row[4],
+        'to': row[3],
+        'from': row[4],
         'booked' : row[5],
         'capacity' : row[6]
+    } for row in journeys_db]
+
+    return journeys
+
+def get_day_journeys_recursive(from_place, to_place, journey_date):
+
+    # TODO - update the journeys_db variable to get information from the database about this journey!
+    # List all the journeys between two locations.
+    # Should be chronologically ordered
+    # It is a list of lists
+
+    connection = database_connect()
+    if (connection is None):
+        return None
+    cur = connection.cursor()
+
+    try:
+        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
+        cur.execute(sql,(from_place,))
+        from_placeID = cur.fetchone()
+
+        sql = "SELECT place_id FROM public.Place WHERE place_name=%s"
+        cur.execute(sql,(to_place,))
+        to_placeID = cur.fetchone()
+
+        #2017-12-13
+        year = int(journey_date[0:4])
+        month = int(journey_date[5:7])
+        day = int(journey_date[8:])
+
+        print(year)
+        print(month)
+        print(day)
+        sql = """SELECT vehicle_code,
+	              TO_CHAR(EXTRACT(DAY FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(MONTH FROM depart_time),'fm00') || '/' || TO_CHAR(EXTRACT(YEAR FROM depart_time),'fm0000') as day,
+	              TO_CHAR(EXTRACT(hour FROM depart_time),'fm00') || TO_CHAR(EXTRACT(minute FROM depart_time),'fm00')as time,
+
+                  (SELECT place_name FROM public.Place WHERE place_id = %s) as to_place,
+
+                  (SELECT place_name FROM public.Place WHERE place_id = %s) as from_place,
+
+                  nbooked,capacity
+
+                  FROM public.Journey JOIN public.Vehicle USING(vehicle_code) JOIN public.Place P1 ON(from_place = P1.place_id) JOIN public.Place P2 ON(to_place = P2.place_id)
+                  WHERE from_place=%s AND to_place=%s
+                  AND EXTRACT(YEAR FROM depart_time) = %s
+                  AND EXTRACT(MONTH FROM depart_time) = %s
+                  AND EXTRACT(day FROM depart_time) = %s
+                  ORDER BY day,time,to_place,from_place,vehicle_code"""
+
+        cur.execute(sql,[to_placeID[0],from_placeID[0],from_placeID[0],to_placeID[0],year,month,day])
+        lists = cur.fetchall()
+        cur.close()
+        connection.close()
+    except:
+        cur.close()
+        connection.close()
+        print("Error when Searching for journeys")
+        return None
+
+    # Format:
+    # [
+    #   [ vehicle, day, time, to, from, nbooked, vehicle_capacity],
+    #   ...
+    # ]
+    journeys_db = lists
+    journeys = [{
+        'vehicle': row[0],
+        'start_day': row[1],
+        'start_time': row[2],
+        'to': row[3],
+        'from': row[4],
+        'booked' : row[5],
+        'capacity' : row[6]
+
     } for row in journeys_db]
 
     return journeys
